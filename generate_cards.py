@@ -7,9 +7,9 @@ from datetime import datetime
 
 # === Konfiguration ===
 BILDER_ORDNER = "bilder"
+BASIS_ORDNER = "cards_output"
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-KARTEN_ORDNER = f"cards_output_{timestamp}"
-# SYMBOL_GROESSE = 200
+KARTEN_ORDNER = os.path.join(BASIS_ORDNER, timestamp)
 KARTEN_GROESSE = 1100
 
 # === Lade Symbole ===
@@ -183,6 +183,7 @@ def main():
         erstelle_karte_bild(symbole_pfade, karte, i)
 
     print(f"{len(karten_indices)} Karten wurden erstellt mit {max_n} Symbolen pro Karte.")
+    print(f"📁 Dateien gespeichert unter: {KARTEN_ORDNER}")
 
     erstelle_pdf(KARTEN_ORDNER)
 
