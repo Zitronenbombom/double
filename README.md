@@ -1,4 +1,38 @@
 # double
+## Installation
+
+
+1. **Download**  
+   Lade das Projekt herunter:  
+   - Entweder über **Git**:  
+     ```bash
+     git clone https://github.com/dein-user/dein-repo.git
+     ```
+   - Oder einfach als **ZIP-Datei herunterladen und entpacken**
+
+2. **Ordner vorbereiten**  
+   - Erstelle im Projektverzeichnis einen Ordner namens **`bilder/`**
+   - Füge dort deine gewünschten **Symbol-Bilder** ein (`.png`, `.jpg`, `.jpeg`)
+
+3. **Programm starten**  
+   - **Doppelklicke** auf `generate_cards.exe`
+   - Die generierten Karten und die PDF findest du dann unter:  
+     `cards_output/YYYY-MM-DD_HH-MM-SS/`
+
+4. **Drucken (optional)**  
+   - Die Datei `dobble_karten_6_pro_seite.pdf` enthält 6 Karten pro A4-Seite  
+
+---
+
+## Hinweise
+
+- Je mehr Bilder du in `bilder/` hast, desto mehr Symbole pro Karte sind möglich.
+- Das Spiel basiert auf dem **Dobble-Prinzip**:  
+  Jede Kartenpaarung hat **genau ein gemeinsames Symbol**.
+- Nur `.png`, `.jpg`, `.jpeg`-Dateien werden unterstützt.
+
+
+
 
 ## Gültige Symbolanzahlen für Dobble-Karten
 
