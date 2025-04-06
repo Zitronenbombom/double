@@ -41,15 +41,20 @@ Damit das Dobble-Prinzip funktioniert (jede Kartenpaarung hat **genau ein gemein
 - Formel: **benötigte Bilder = n × (n - 1) + 1**
 - **n - 1 muss eine Primzahl** sein
 
-| Symbole pro Karte (`n`) | Benötigte Bilder | Gültig (`n - 1` ist prim?)       |
-|-------------------------|------------------|----------------------------------|
-| 3                       | 7                | (2 ist prim)                   |
-| 4                       | 13               | (3 ist prim)                   |
-| 5                       | 21               | (4 ist keine Primzahl)         |
-| 6                       | 31               | (5 ist prim)                   |
-| 7                       | 43               | (6 ist keine Primzahl)         |
-| 8                       | 57               | (7 ist prim)                   |
-| 9                       | 73               | (8 ist keine Primzahl)         |
-| 10                      | 91               | (9 ist prim)                   |
+| Symbole pro Karte (`n`) | Benötigte Bilder | Gültig (`n - 1` ist prim?)       | Gültig |
+|-------------------------|------------------|----------------------------------|--------|
+| 3                       | 7                | (2 ist prim)                     | ja     |
+| 4                       | 13               | (3 ist prim)                     | ja     |
+| 5                       | 21               | (4 ist keine Primzahl)           | nein   |
+| 6                       | 31               | (5 ist prim)                     | ja     |
+| 7                       | 43               | (6 ist keine Primzahl)           | nein   |
+| 8                       | 57               | (7 ist prim)                     | ja     |
+| 9                       | 73               | (8 ist keine Primzahl)           | nein   |
+| 10                      | 91               | (9 ist keine Primzahl)           | nein   |
+| 11                      | 111              | (10 ist keine Primzahl)          | nein   |
+| 12                      | 133              | (11 ist prim)                    | ja     |
+| 13                      | 157              | (12 ist keine Primzahl)          | nein   |
+| 14                      | 183              | (13 ist prim)                    | ja     |
+
 
 > Je mehr Bilder im `bilder/`-Ordner, desto mehr Symbole pro Karte sind möglich – **aber nur für gültige Werte** nach dieser Regel.

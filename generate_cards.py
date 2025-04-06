@@ -9,13 +9,13 @@ BILDER_ORDNER = "bilder"
 BASIS_ORDNER = "cards_output"
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 KARTEN_ORDNER = os.path.join(BASIS_ORDNER, timestamp)
-KARTEN_GROESSE = 2000  # Größe der einzelnen Karte (Quadrat in Pixel)
+KARTEN_GROESSE = 2000  # Pixel
 
 # === Lade Symbole ===
 def lade_symbole():
     dateien = [f for f in os.listdir(BILDER_ORDNER) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
     symbole = [os.path.join(BILDER_ORDNER, f) for f in dateien]
-    print(f"🔍 Gefundene Bilder ({len(symbole)}):")
+    print(f"Gefundene Bilder ({len(symbole)}):")
     for s in symbole:
         print("   -", s)
     return symbole
@@ -39,17 +39,13 @@ def generiere_dobble_karten(n):
     q = n - 1
     karten = []
 
-    # Erste Karte
     karten.append([0] + [i + 1 for i in range(q)])
-
-    # q Karten
     for i in range(1, q + 1):
         karte = [0]
         for j in range(1, q + 1):
             karte.append(q * i + j)
         karten.append(karte)
 
-    # q^2 Karten
     for i in range(1, q + 1):
         for j in range(1, q + 1):
             karte = [i]
@@ -60,17 +56,59 @@ def generiere_dobble_karten(n):
 
     return karten
 
+# === Positionierungslogik ===
+def berechne_symbolpositionen(n, radius):
+    zentrum = (KARTEN_GROESSE // 2, KARTEN_GROESSE // 2)
+    koordinaten = []
+
+    if n <= 6:
+        for i in range(n):
+            winkel = 2 * math.pi * i / n
+            x = zentrum[0] + math.cos(winkel) * radius
+            y = zentrum[1] + math.sin(winkel) * radius
+            koordinaten.append((x, y))
+
+    elif 7 <= n <= 9:
+        innen = 1
+        außen = n - innen
+        koordinaten.append(zentrum)
+        for i in range(außen):
+            winkel = 2 * math.pi * i / außen
+            x = zentrum[0] + math.cos(winkel) * radius
+            y = zentrum[1] + math.sin(winkel) * radius
+            koordinaten.append((x, y))
+
+    else:
+        ringe = []
+        rest = n
+        ring_radien = [radius * 0.5, radius * 0.85, radius]
+        ring_kapazitaet = [1, 6, 12, 18, 24]
+
+        for r, cap in zip(ring_radien, ring_kapazitaet):
+            anz = min(rest, cap)
+            rest -= anz
+            ringe.append((r, anz))
+            if rest <= 0:
+                break
+
+        for r, anz in ringe:
+            for i in range(anz):
+                winkel = 2 * math.pi * i / anz
+                x = zentrum[0] + math.cos(winkel) * r
+                y = zentrum[1] + math.sin(winkel) * r
+                koordinaten.append((x, y))
+
+    return koordinaten
+
 # === Erzeuge eine runde Karte mit Symbolbildern ===
 def erstelle_karte_bild(symbole_pfade, symbol_indices, nummer):
     n = len(symbol_indices)
     image = Image.new("RGBA", (KARTEN_GROESSE, KARTEN_GROESSE), (255, 255, 255, 255))
     draw = ImageDraw.Draw(image)
 
-    # Randdefinition – kleiner Abstand vom Kreis zum Kartenrand
     abstand_zum_rand = 20
     rand_dicke = max(KARTEN_GROESSE // 150, 5)
 
-    # Kreis zeichnen (Rahmen)
     draw.ellipse(
         [
             abstand_zum_rand,
@@ -82,27 +120,21 @@ def erstelle_karte_bild(symbole_pfade, symbol_indices, nummer):
         width=rand_dicke,
     )
 
-    # Platz für Symbole berechnen
     SYMBOL_RADIUS = (KARTEN_GROESSE // 2) - abstand_zum_rand - 20
     platz_durchmesser = SYMBOL_RADIUS * 2
     symbolfläche = (platz_durchmesser ** 2 * math.pi) / (n * 10)
     SYMBOL_GROESSE = int(math.sqrt(symbolfläche))
     SYMBOL_GROESSE = max(60, min(SYMBOL_GROESSE, 300))
 
-    # Kreisradius für Symbolplatzierung
-    SYMBOL_PLATZ_FAKTOR = 0.65  # wie weit außen die Symbole platziert werden
-    symbol_kreis_radius = int((KARTEN_GROESSE // 2 - abstand_zum_rand - SYMBOL_GROESSE // 2) * SYMBOL_PLATZ_FAKTOR)
+    positionen = berechne_symbolpositionen(n, SYMBOL_RADIUS * 0.65)
 
-    winkel_offset = random.uniform(0, 2 * math.pi)
-    for i, idx in enumerate(symbol_indices):
+    for (x, y), idx in zip(positionen, symbol_indices):
         symbol_path = symbole_pfade[idx % len(symbole_pfade)]
         symbol_img = Image.open(symbol_path).convert("RGBA")
         symbol_img = symbol_img.resize((SYMBOL_GROESSE, SYMBOL_GROESSE), Image.LANCZOS)
 
-        winkel = 2 * math.pi * i / len(symbol_indices) + winkel_offset
-        x = int(KARTEN_GROESSE / 2 + math.cos(winkel) * symbol_kreis_radius - SYMBOL_GROESSE / 2)
-        y = int(KARTEN_GROESSE / 2 + math.sin(winkel) * symbol_kreis_radius - SYMBOL_GROESSE / 2)
-
+        x = int(x - SYMBOL_GROESSE / 2)
+        y = int(y - SYMBOL_GROESSE / 2)
         image.paste(symbol_img, (x, y), symbol_img)
 
     image.convert("RGB").save(os.path.join(KARTEN_ORDNER, f"karte_{nummer+1:03}.png"))
@@ -112,10 +144,9 @@ def erstelle_pdf(karten_ordner):
     seiten_bilder = []
     dateien = sorted(f for f in os.listdir(karten_ordner) if f.endswith(".png"))
 
-    # A4 bei 300 DPI
     seitenbreite = 2480
     seitenhoehe = 3508
-    seitenrand = 100  # fester Seitenrand (ca. 8,5 mm bei 300 DPI)
+    seitenrand = 100
 
     spalten = 2
     reihen = 3
@@ -170,7 +201,7 @@ def main():
         return
 
     benoetigte_symbole = max_n * (max_n - 1) + 1
-    print(f"⚙️ Verwendete Bilder: {benoetigte_symbole} (für {max_n} Symbole pro Karte)")
+    print(f"Verwendete Bilder: {benoetigte_symbole} (für {max_n} Symbole pro Karte)")
 
     karten_indices = generiere_dobble_karten(max_n)
     os.makedirs(KARTEN_ORDNER, exist_ok=True)
