@@ -4,13 +4,12 @@ import random
 from PIL import Image, ImageDraw
 from datetime import datetime
 
-
 # === Konfiguration ===
 BILDER_ORDNER = "bilder"
 BASIS_ORDNER = "cards_output"
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 KARTEN_ORDNER = os.path.join(BASIS_ORDNER, timestamp)
-KARTEN_GROESSE = 1100
+KARTEN_GROESSE = 2000  # Größe der einzelnen Karte (Quadrat in Pixel)
 
 # === Lade Symbole ===
 def lade_symbole():
@@ -38,7 +37,6 @@ def bestimme_max_n(symbole_anzahl):
 # === Erzeuge mathematisch gültige Dobble-Karten ===
 def generiere_dobble_karten(n):
     q = n - 1
-    symbole = list(range(n * q + 1))
     karten = []
 
     # Erste Karte
@@ -68,9 +66,11 @@ def erstelle_karte_bild(symbole_pfade, symbol_indices, nummer):
     image = Image.new("RGBA", (KARTEN_GROESSE, KARTEN_GROESSE), (255, 255, 255, 255))
     draw = ImageDraw.Draw(image)
 
-    # Zeichne dünnen Kreis als Rahmen
-    rand_dicke = 8
-    abstand_zum_rand = 50  
+    # Randdefinition – kleiner Abstand vom Kreis zum Kartenrand
+    abstand_zum_rand = 20
+    rand_dicke = max(KARTEN_GROESSE // 150, 5)
+
+    # Kreis zeichnen (Rahmen)
     draw.ellipse(
         [
             abstand_zum_rand,
@@ -82,16 +82,17 @@ def erstelle_karte_bild(symbole_pfade, symbol_indices, nummer):
         width=rand_dicke,
     )
 
-    # Platzberechnung
+    # Platz für Symbole berechnen
     SYMBOL_RADIUS = (KARTEN_GROESSE // 2) - abstand_zum_rand - 20
-
-    # Dynamische Symbolgröße basierend auf Fläche
     platz_durchmesser = SYMBOL_RADIUS * 2
     symbolfläche = (platz_durchmesser ** 2 * math.pi) / (n * 10)
     SYMBOL_GROESSE = int(math.sqrt(symbolfläche))
-    SYMBOL_GROESSE = max(60, min(SYMBOL_GROESSE, 300)) 
+    SYMBOL_GROESSE = max(60, min(SYMBOL_GROESSE, 300))
 
-    # Symbole platzieren
+    # Kreisradius für Symbolplatzierung
+    SYMBOL_PLATZ_FAKTOR = 0.65  # wie weit außen die Symbole platziert werden
+    symbol_kreis_radius = int((KARTEN_GROESSE // 2 - abstand_zum_rand - SYMBOL_GROESSE // 2) * SYMBOL_PLATZ_FAKTOR)
+
     winkel_offset = random.uniform(0, 2 * math.pi)
     for i, idx in enumerate(symbol_indices):
         symbol_path = symbole_pfade[idx % len(symbole_pfade)]
@@ -99,41 +100,37 @@ def erstelle_karte_bild(symbole_pfade, symbol_indices, nummer):
         symbol_img = symbol_img.resize((SYMBOL_GROESSE, SYMBOL_GROESSE), Image.LANCZOS)
 
         winkel = 2 * math.pi * i / len(symbol_indices) + winkel_offset
-        x = int(KARTEN_GROESSE / 2 + math.cos(winkel) * 250 - SYMBOL_GROESSE / 2)
-        y = int(KARTEN_GROESSE / 2 + math.sin(winkel) * 250 - SYMBOL_GROESSE / 2)
+        x = int(KARTEN_GROESSE / 2 + math.cos(winkel) * symbol_kreis_radius - SYMBOL_GROESSE / 2)
+        y = int(KARTEN_GROESSE / 2 + math.sin(winkel) * symbol_kreis_radius - SYMBOL_GROESSE / 2)
 
         image.paste(symbol_img, (x, y), symbol_img)
 
-    # Speichere als RGB für PDF-Kompatibilität
     image.convert("RGB").save(os.path.join(KARTEN_ORDNER, f"karte_{nummer+1:03}.png"))
 
+# === PDF mit 6 Karten pro A4-Seite ===
 def erstelle_pdf(karten_ordner):
     seiten_bilder = []
     dateien = sorted(f for f in os.listdir(karten_ordner) if f.endswith(".png"))
 
-    # A4 in 300 DPI
+    # A4 bei 300 DPI
     seitenbreite = 2480
     seitenhoehe = 3508
+    seitenrand = 100  # fester Seitenrand (ca. 8,5 mm bei 300 DPI)
 
-    # Karten pro Zeile und Spalte
     spalten = 2
     reihen = 3
     karten_pro_seite = spalten * reihen
 
-    # Kartengröße (etwas kleiner, damit alles gut passt)
-    kartenbreite = 780
-    kartenhoehe = 780
+    verfuegbar_x = seitenbreite - 2 * seitenrand
+    verfuegbar_y = seitenhoehe - 2 * seitenrand
+    kartenbreite = verfuegbar_x // spalten
+    kartenhoehe = verfuegbar_y // reihen
 
-    # Zwischenräume
-    abstand_x = (seitenbreite - spalten * kartenbreite) // (spalten + 1)
-    abstand_y = (seitenhoehe - reihen * kartenhoehe) // (reihen + 1)
-
-    # Alle Positionen berechnen
     positionen = []
     for zeile in range(reihen):
         for spalte in range(spalten):
-            x = abstand_x + spalte * (kartenbreite + abstand_x)
-            y = abstand_y + zeile * (kartenhoehe + abstand_y)
+            x = seitenrand + spalte * kartenbreite
+            y = seitenrand + zeile * kartenhoehe
             positionen.append((x, y))
 
     seite = None
@@ -147,7 +144,6 @@ def erstelle_pdf(karten_ordner):
 
         karte = Image.open(os.path.join(karten_ordner, datei)).convert("RGB")
         karte = karte.resize((kartenbreite, kartenhoehe), Image.LANCZOS)
-
         pos = positionen[karten_count % karten_pro_seite]
         seite.paste(karte, pos)
 
@@ -159,7 +155,7 @@ def erstelle_pdf(karten_ordner):
     if seiten_bilder:
         pdf_pfad = os.path.join(karten_ordner, "dobble_karten_6_pro_seite.pdf")
         seiten_bilder[0].save(pdf_pfad, save_all=True, append_images=seiten_bilder[1:])
-        print(f"PDF mit 6 Karten pro Seite gespeichert unter:\n{pdf_pfad}")
+        print(f"PDF gespeichert unter:\n{pdf_pfad}")
     else:
         print("Keine Karten gefunden für PDF-Erstellung.")
 
@@ -174,7 +170,7 @@ def main():
         return
 
     benoetigte_symbole = max_n * (max_n - 1) + 1
-    print(f"Es werden {benoetigte_symbole} Bilder genutzt für {max_n} Symbole pro Karte.")
+    print(f"⚙️ Verwendete Bilder: {benoetigte_symbole} (für {max_n} Symbole pro Karte)")
 
     karten_indices = generiere_dobble_karten(max_n)
     os.makedirs(KARTEN_ORDNER, exist_ok=True)
@@ -182,8 +178,8 @@ def main():
     for i, karte in enumerate(karten_indices):
         erstelle_karte_bild(symbole_pfade, karte, i)
 
-    print(f"{len(karten_indices)} Karten wurden erstellt mit {max_n} Symbolen pro Karte.")
-    print(f"📁 Dateien gespeichert unter: {KARTEN_ORDNER}")
+    print(f"{len(karten_indices)} Karten erstellt.")
+    print(f"Gespeichert unter: {KARTEN_ORDNER}")
 
     erstelle_pdf(KARTEN_ORDNER)
 
